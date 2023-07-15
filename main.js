@@ -240,8 +240,12 @@ window.addEventListener('resize', function() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Animation loop
+const framesAt=[];
 function animate() {
+    framesAt.push(Date.now());
+    if(10<framesAt.length)framesAt.shift()
+    const fps=(framesAt.at(-1)-framesAt[0])/framesAt.length;
+    document.getElementById('fps').innerText=Math.round(fps);
     requestAnimationFrame(animate);
     // plant.root.rotation.y +=0.01;
     // plant.root.rotation.x +=0.01;
