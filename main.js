@@ -35,6 +35,40 @@ var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
 skyBox.position.y=0;
 scene.add(skyBox);
 
+class Butterfly{
+    static {
+        const vertices = new Float32Array( [
+            0, 0, 0,
+            240, 105, 0,
+            110, 230, 0,
+
+            0, 0, 0,
+            125, -340, 0,
+            200, -100, 0,
+        ].map(v => v/3000));
+        Butterfly.geometry = new THREE.BufferGeometry();
+        Butterfly.geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+        Butterfly.material = new THREE.MeshPhongMaterial({
+            color: 0xFFFFFF,
+            flatShading: true,
+            side: THREE.DoubleSide,
+        });
+    }
+    constructor(){
+        this.root = new THREE.Group();
+        this.wings = Array.from({length:2},()=>{
+            const wing = new THREE.Mesh(Butterfly.geometry, Butterfly.material);
+            this.root.add(wing);
+            return wing;
+        });
+        this.setOpenRatio(0);
+    }
+    setOpenRatio(r){
+        const a=r*Math.PI/2;
+        this.wings[0].rotation.y = Math.PI/2+a;
+        this.wings[1].rotation.y = Math.PI/2-a;
+    }
+}
 class Petal{
     static {
         /*
@@ -201,8 +235,8 @@ floor.rotation.x = -Math.PI / 2; // Rotate the floor to lay flat
 scene.add(floor);
 
 // Step 4: Create the cube
-const N=10;
-const plants = Array.from({length:N*N},(_,i)=>{
+const PLANTS_SQRT=10;
+const plants = Array.from({length:PLANTS_SQRT*PLANTS_SQRT},(_,i)=>{
     const plant = new Plant({
         petals: {
             count: 3+Math.random()*6|0,
@@ -221,11 +255,21 @@ const plants = Array.from({length:N*N},(_,i)=>{
         },
     });
     plant.root.position.y = 0;
-    plant.root.position.x = -N/2+i%N*1;
-    plant.root.position.z = -N/2+(i/N|0);
+    plant.root.position.x = -PLANTS_SQRT/2+i%PLANTS_SQRT*1;
+    plant.root.position.z = -PLANTS_SQRT/2+(i/PLANTS_SQRT|0);
     return plant;
 });
 plants.forEach(plant => scene.add(plant.root));
+
+const BUTTERFLIES = 50;
+const butterflies = Array.from({length:BUTTERFLIES},(_,i)=>{
+    const butterfly = new Butterfly();
+    butterfly.root.position.y = 1+Math.random();
+    butterfly.root.position.x = -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT;
+    butterfly.root.position.z = -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT;
+    return butterfly;
+});
+butterflies.forEach(butterfly => scene.add(butterfly.root));
 
 
 // Step 5: Create the light
@@ -264,6 +308,7 @@ const framesAt=[];
 function animate() {
     framesAt.push(Date.now());
     if(10<framesAt.length)framesAt.shift()
+    const dt = 2<=framesAt.length?framesAt.at(-1)-framesAt.at(-2):0;
     const fps=(framesAt.length-1)*1000/(framesAt.at(-1)-framesAt[0]);
     document.getElementById('fps').innerText=Math.round(fps);
     requestAnimationFrame(animate);
@@ -273,6 +318,14 @@ function animate() {
     //plants.forEach(plant => plant.setOpenRatio(1));
     //plants.forEach(plant => plant.setOpenRatio(Math.abs(Date.now()%2000/1000-1)));
     plants.forEach(plant => plant.setOpenRatio((1+Math.sin(Date.now()/1000))/2));
+    butterflies.forEach((butterfly,i) => {
+        butterfly.setOpenRatio((1+Math.sin(i+Date.now()*20/1000))/2);
+        butterfly.root.position.y += Math.sin((Date.now()*(1+i/10)/2+i)/100)/100;
+
+        butterfly.root.rotation.y += dt*(1+i/10)/1000;
+        butterfly.root.position.z += Math.cos(butterfly.root.rotation.y)*dt/500;
+        butterfly.root.position.x += Math.sin(butterfly.root.rotation.y)*dt/500;
+    });
     //camera.updateProjectionMatrix();
     renderer.render(scene, camera);
 }
