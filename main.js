@@ -10,19 +10,29 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Step 2: Create the skybox
-var skyGeometry = new THREE.BoxGeometry(1000, 500, 1000);
-let blue = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.BackSide  });
-let green = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.BackSide  });
+var skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+// let blue = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.BackSide  });
+// let green = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.BackSide  });
+// var skyMaterials = [
+//     blue,
+//     blue,
+//     blue,
+//     green,
+//     blue,
+//     blue,
+// ];
+// var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
 var skyMaterials = [
-    blue,
-    blue,
-    blue,
-    green,
-    blue,
-    blue,
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( "img/nightsky_ft.png" ), side: THREE.DoubleSide }), //front side
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_bk.png' ), side: THREE.DoubleSide }), //back side
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_up.png' ), side: THREE.DoubleSide }), //up side
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_dn.png' ), side: THREE.DoubleSide }), //down side
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_rt.png' ), side: THREE.DoubleSide }), //right side
+    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_lf.png' ), side: THREE.DoubleSide }) //left side
 ];
 var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
-skyBox.position.y=250;
+// skyBox.position.y=250;
+skyBox.position.y=0;
 scene.add(skyBox);
 class Petal{
     constructor({tip,rectangle,material}){
@@ -84,7 +94,7 @@ class Stem{
             color: config.color,
             flatShading: false,
         });
-        this.geometry = new THREE.CylinderGeometry(config.radius, config.radius, config.height, 3, 1, true);
+        this.geometry = new THREE.CylinderGeometry(config.radius, config.radius, config.height, 3, 1, false);
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.root = this.mesh;
     }
@@ -133,7 +143,7 @@ class Plant{
         const petalsMaterial = new THREE.MeshPhongMaterial( {
             side: THREE.DoubleSide,
             color: config.petals.color,
-            flatShading: true
+            flatShading: true,
         });
 
         this.group = new THREE.Group();
@@ -164,12 +174,11 @@ class Plant{
 
 }
 
-// // Step 3: Create the floor
-//  var floorGeometry = new THREE.PlaneGeometry(100, 100);
-//  var floorMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-//  var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-//  floor.rotation.x = -Math.PI / 2; // Rotate the floor to lay flat
-//    scene.add(floor);
+var floorGeometry = new THREE.PlaneGeometry(100, 100);
+var floorMaterial = new THREE.MeshPhongMaterial({ color: 0x44cc88 });
+var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2; // Rotate the floor to lay flat
+scene.add(floor);
 
 // Step 4: Create the cube
 const N=20;
@@ -187,7 +196,7 @@ const plants = Array.from({length:N*N},(_,i)=>{
         },
         stem: {
             radius:0.01,
-            height:0.3+Math.random()*0.5,
+            height:0.2+Math.random()*0.5,
             color: new THREE.Color().setHSL(i%3*1/3,1,0.5),
         },
     });
@@ -200,8 +209,8 @@ plants.forEach(plant => scene.add(plant.root));
 
 
 // Step 5: Create the light
-var light = new THREE.DirectionalLight(0xffffff); // White light
-light.position.set(1000, 1000, 1000); // Sun position
+var light = new THREE.DirectionalLight(0x8888ff);
+light.position.set(1000, 1000, 1000);
 scene.add(light);
 
 // const sunlight = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
@@ -216,7 +225,7 @@ var mouseY = 0;
 // Event listener for mouse movement
 document.addEventListener('mousemove', function(event) {
     mouseX = -Math.PI*((event.clientX / window.innerWidth) * 2 - 1);
-    mouseY = -Math.PI/10*((event.clientY / window.innerHeight) * 2 - 1);
+    mouseY = -Math.PI*((event.clientY / window.innerHeight) * 2 - 1);
     var combinedRotation = new THREE.Matrix4().multiplyMatrices(
         new THREE.Matrix4().makeRotationY(mouseX),
         new THREE.Matrix4().makeRotationX(mouseY)
