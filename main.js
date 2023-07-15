@@ -34,7 +34,21 @@ var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
 // skyBox.position.y=250;
 skyBox.position.y=0;
 scene.add(skyBox);
+
 class Petal{
+    static {
+        Petal.vertexNodeIndices=[
+            0, 1, 2,
+            1, 3, 2,
+            2, 3, 4,
+            4, 3, 5,
+        ];
+        const skinIndices = Petal.vertexNodeIndices.map( x => x+1 >> 1).flatMap(i => [i,0,0,0]);
+        const skinWeights = Petal.vertexNodeIndices.flatMap(_ => [1,0,0,0]);
+        Petal.skinIndex = new THREE.Uint16BufferAttribute( skinIndices, 4 ) ;
+        Petal.skinWeight = new THREE.Float32BufferAttribute( skinWeights, 4 );
+
+    }
     constructor({tip,rectangle,material}){
         /* Single petal looks like this
          .            ---->x                   .
@@ -52,20 +66,12 @@ class Petal{
                                                /*5*/[0,2*tip.height+rectangle.height],
         ];
         this.geometry = new THREE.BufferGeometry();
-        const vertexNodeIndices=[
-            0, 1, 2,
-            1, 3, 2,
-            2, 3, 4,
-            4, 3, 5,
-        ]
-        const vertices = new Float32Array( vertexNodeIndices.flatMap( i=> [...petalNodesXY[i], 0]));
+        const vertices = new Float32Array( Petal.vertexNodeIndices.flatMap( i=> [...petalNodesXY[i], 0]));
         this.vertices = vertices;//debug
         this.geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-        const skinIndices = vertexNodeIndices.map( x => x+1 >> 1).flatMap(i => [i,0,0,0]);
-        const skinWeights = vertexNodeIndices.flatMap(_ => [1,0,0,0]);
-        this.geometry.setAttribute( 'skinIndex', new THREE.Uint16BufferAttribute( skinIndices, 4 ) );
-        this.geometry.setAttribute( 'skinWeight', new THREE.Float32BufferAttribute( skinWeights, 4 ) );
-        this.material = material
+        this.geometry.setAttribute( 'skinIndex', Petal.skinIndex);
+        this.geometry.setAttribute( 'skinWeight', Petal.skinWeight);
+        this.material = material;
         this.mesh = new THREE.SkinnedMesh( this.geometry, this.material );
         this.bones = [];
         let prevBone = new THREE.Bone();
