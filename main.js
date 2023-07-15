@@ -78,6 +78,17 @@ class Petal{
         this.bones[2].rotation.x = far;
     }
 }
+class Stem{
+    constructor(config){
+        this.material = new THREE.MeshPhongMaterial({
+            color: config.color,
+            flatShading: false,
+        });
+        this.geometry = new THREE.CylinderGeometry(config.radius, config.radius, config.height, 3, 1, true);
+        this.mesh = new THREE.Mesh(this.geometry, this.material);
+        this.root = this.mesh;
+    }
+}
 class Plant{
     constructor(config){
         config.petals.width = Math.sin(2*Math.PI/config.petals.count/2)*config.flower.radius*2;
@@ -128,12 +139,15 @@ class Plant{
         this.group = new THREE.Group();
         this.petals = Array.from({length:config.petals.count},(_,i)=>{
             const petal=new Petal({ tip, rectangle, material:petalsMaterial});
-            // petal.bones[0].rotation.z=(i/config.petals.count)*2*Math.PI;
             petal.root.rotation.z=(i/config.petals.count)*2*Math.PI;
             petal.root.rotation.x=-Math.PI/2;
+            petal.root.position.y=config.stem.height;
             this.group.add(petal.root);
             return petal;
         });
+        this.stem = new Stem(config.stem);
+        this.stem.root.position.y = +config.stem.height/2;
+        this.group.add(this.stem.root);
         this.foldAngle = config.petals.foldAngle;
         this.openAngle = config.petals.openAngle;
         this.root = this.group;
@@ -158,23 +172,28 @@ class Plant{
 //    scene.add(floor);
 
 // Step 4: Create the cube
-
-const plants = Array.from({length:100},(_,i)=>{
+const N=20;
+const plants = Array.from({length:N*N},(_,i)=>{
     const plant = new Plant({
         petals: {
             count: 3+Math.random()*6|0,
             foldAngle: Math.PI/4,
             openAngle: Math.PI/2*1.1,
-            color: new THREE.Color().setHSL(Math.random()*360, 0.5,0.5),
+            color: new THREE.Color().setHSL(Math.random(), 0.5,0.5),
         },
         flower: {
-            radius:.1+Math.random()*0.2,
-            height:.5,
+            radius:.05+Math.random()*0.1,
+            height:.3,
+        },
+        stem: {
+            radius:0.01,
+            height:0.3+Math.random()*0.5,
+            color: new THREE.Color().setHSL(i%3*1/3,1,0.5),
         },
     });
-    plant.root.position.y = 0.2;
-    plant.root.position.x = -5+i%10*1;
-    plant.root.position.z = -3-(i/10|0);
+    plant.root.position.y = 0;
+    plant.root.position.x = -N/2+i%N*1;
+    plant.root.position.z = -N/2+(i/N|0);
     return plant;
 });
 plants.forEach(plant => scene.add(plant.root));
