@@ -37,6 +37,15 @@ scene.add(skyBox);
 
 class Petal{
     static {
+        /*
+             0
+            / \
+            1-2
+            |\|
+            3-4
+            \ /
+             5
+        */
         Petal.vertexNodeIndices=[
             0, 1, 2,
             1, 3, 2,
@@ -49,28 +58,31 @@ class Petal{
         Petal.skinWeight = new THREE.Float32BufferAttribute( skinWeights, 4 );
 
     }
-    constructor({tip,rectangle,material}){
-        /* Single petal looks like this
-         .            ---->x                   .
-        / \           |                        | config.tip.height
-        *-*           v y             *-- config.tip.width --*
-        |\|                           | config.rectangle.height
-        *-*
-        \ /
-         *
-        */
-        const petalNodesXY = [
-                                                    /* 0 */[0,0],
-            /*1*/[-tip.width/2, tip.height],                   /*2*/[+tip.width/2, tip.height],
-            /*3*/[-tip.width/2, tip.height+rectangle.height],  /*4*/[+tip.width/2, tip.height+rectangle.height],
-                                               /*5*/[0,2*tip.height+rectangle.height],
-        ];
-        this.geometry = new THREE.BufferGeometry();
-        const vertices = new Float32Array( Petal.vertexNodeIndices.flatMap( i=> [...petalNodesXY[i], 0]));
-        this.vertices = vertices;//debug
-        this.geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-        this.geometry.setAttribute( 'skinIndex', Petal.skinIndex);
-        this.geometry.setAttribute( 'skinWeight', Petal.skinWeight);
+    constructor({tip,rectangle,material,geometry}){
+        if(!geometry){
+            /* Single petal looks like this
+             .            ---->x                   .
+            / \           |                        | config.tip.height
+            *-*           v y             *-- config.tip.width --*
+            |\|                           | config.rectangle.height
+            *-*
+            \ /
+             *
+            */
+            const petalNodesXY = [
+                                                        /* 0 */[0,0],
+                /*1*/[-tip.width/2, tip.height],                   /*2*/[+tip.width/2, tip.height],
+                /*3*/[-tip.width/2, tip.height+rectangle.height],  /*4*/[+tip.width/2, tip.height+rectangle.height],
+                                                   /*5*/[0,2*tip.height+rectangle.height],
+            ];
+            geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array( Petal.vertexNodeIndices.flatMap( i=> [...petalNodesXY[i], 0]));
+            // this.vertices = vertices;//debug
+            geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+            geometry.setAttribute( 'skinIndex', Petal.skinIndex);
+            geometry.setAttribute( 'skinWeight', Petal.skinWeight);
+        }
+        this.geometry = geometry;
         this.material = material;
         this.mesh = new THREE.SkinnedMesh( this.geometry, this.material );
         this.bones = [];
@@ -153,11 +165,13 @@ class Plant{
         });
 
         this.group = new THREE.Group();
+        let geometry;
         this.petals = Array.from({length:config.petals.count},(_,i)=>{
-            const petal=new Petal({ tip, rectangle, material:petalsMaterial});
+            const petal=new Petal({ tip, rectangle, material:petalsMaterial, geometry});
             petal.root.rotation.z=(i/config.petals.count)*2*Math.PI;
             petal.root.rotation.x=-Math.PI/2;
             petal.root.position.y=config.stem.height;
+            geometry=petal.geometry;
             this.group.add(petal.root);
             return petal;
         });
@@ -187,7 +201,7 @@ floor.rotation.x = -Math.PI / 2; // Rotate the floor to lay flat
 scene.add(floor);
 
 // Step 4: Create the cube
-const N=20;
+const N=10;
 const plants = Array.from({length:N*N},(_,i)=>{
     const plant = new Plant({
         petals: {
@@ -250,7 +264,7 @@ const framesAt=[];
 function animate() {
     framesAt.push(Date.now());
     if(10<framesAt.length)framesAt.shift()
-    const fps=(framesAt.at(-1)-framesAt[0])/framesAt.length;
+    const fps=(framesAt.length-1)*1000/(framesAt.at(-1)-framesAt[0]);
     document.getElementById('fps').innerText=Math.round(fps);
     requestAnimationFrame(animate);
     // plant.root.rotation.y +=0.01;
