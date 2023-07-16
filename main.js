@@ -109,7 +109,7 @@ class Butterfly{
             const direction = new THREE.Vector3().subVectors(this.nextStop,this.root.position);
             this.root.rotation.y = Math.atan2(direction.x, direction.z);
             this.root.position.lerp(this.nextStop, dt / timeToNextStop);
-            this.root.position.y += dt*Math.sin(2*Math.PI*now+this.seed);
+            this.root.position.y += dt*Math.sin((1+this.seed)*Math.PI*now+this.seed);
             then+=dt;
         }
     }
