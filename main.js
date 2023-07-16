@@ -13,28 +13,22 @@ document.body.appendChild(renderer.domElement);
 document.body.appendChild( VRButton.createButton( renderer ) );
 renderer.xr.enabled = true;
 
-// Step 2: Create the skybox
-var skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
-// let blue = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.BackSide  });
-// let green = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.BackSide  });
-// var skyMaterials = [
-//     blue,
-//     blue,
-//     blue,
-//     green,
-//     blue,
-//     blue,
-// ];
-// var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
-var skyMaterials = [
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( "img/nightsky_ft.png" ), side: THREE.DoubleSide }), //front side
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_bk.png' ), side: THREE.DoubleSide }), //back side
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_up.png' ), side: THREE.DoubleSide }), //up side
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_dn.png' ), side: THREE.DoubleSide }), //down side
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_rt.png' ), side: THREE.DoubleSide }), //right side
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load( 'img/nightsky_lf.png' ), side: THREE.DoubleSide }) //left side
-];
-var skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
+
+const reticle = new THREE.Mesh(
+  new THREE.RingGeometry(0.008, 0.01, 15),
+  new THREE.MeshBasicMaterial({ color: 'pink' })
+);
+reticle.position.z = -0.5;
+camera.add(reticle);
+scene.add(camera);
+
+// skyBox
+const skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+const skyMaterials = ['ft','bk','up','dn','rt','lf'].map(side => new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load( `img/nightsky_${side}.png` ),
+    side: THREE.DoubleSide
+}));
+const skyBox = new THREE.Mesh(skyGeometry, skyMaterials);
 // skyBox.position.y=250;
 skyBox.position.y=0;
 scene.add(skyBox);
