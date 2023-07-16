@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 
 const interpolate = (p, a, b) => p*(b-a)+a;
+const uniformlyRandom = (a,b) => interpolate(Math.random(),a,b);
 
 
 var scene = new THREE.Scene();
@@ -15,12 +16,12 @@ renderer.xr.enabled = true;
 
 
 const reticle = new THREE.Mesh(
-  new THREE.RingGeometry(0.008, 0.01, 15),
+  new THREE.RingGeometry(0.45, 0.5, 30),
   new THREE.MeshBasicMaterial({ color: 'pink' })
 );
-reticle.position.z = -0.5;
-camera.add(reticle);
-scene.add(camera);
+reticle.rotation.x = -Math.PI/2;
+reticle.position.y = 0.02;
+scene.add(reticle);
 
 // skyBox
 const skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
@@ -52,7 +53,7 @@ class Butterfly{
             side: THREE.DoubleSide,
         });
     }
-    constructor(){
+    constructor(config){
         this.root = new THREE.Group();
         this.wings = Array.from({length:2},()=>{
             const wing = new THREE.Mesh(Butterfly.geometry, Butterfly.material);
@@ -60,12 +61,56 @@ class Butterfly{
             return wing;
         });
         this.root.rotation.order = 'YXZ';
+        this.goal = config.position.clone();
+        this.nextStop = config.position.clone();
+        this.root.position.copy(this.goal);
+        this.speed=1;//[m/ms]
         this.setOpenRatio(0);
     }
     setOpenRatio(r){
         const a=r*Math.PI/2;
         this.wings[0].rotation.y = Math.PI/2+a;
         this.wings[1].rotation.y = Math.PI/2-a;
+    }
+    setGoal(goal){
+        this.goal.copy(goal);
+    }
+    update(then,now){
+        //Flying mode:
+        this.root.rotation.x = Math.PI/4;
+        this.setOpenRatio((1+Math.sin(4*2*Math.PI*now))/2);
+        // this.setOpenRatio(1);
+        while(then<now){
+            // Compute distance to nextStop
+            const distanceToNextStop=this.root.position.distanceTo(this.nextStop);
+            if(distanceToNextStop<0.01){
+                //"generally" move towards goal, but:
+                // if near the goal, go straight
+                // otherwise add some random vector to it
+                const distanceToGoal=this.root.position.distanceTo(this.goal);
+                const NEAR = 1;
+                if(distanceToGoal < 0.01){
+                    break;
+                }else if(distanceToGoal < NEAR){
+                    this.nextStop.copy(this.goal);
+                }else{
+                    this.nextStop.lerp(this.goal, Math.random() / distanceToGoal);
+                    this.nextStop.x += uniformlyRandom(-1,1);
+                    this.nextStop.z += uniformlyRandom(-1,1);
+                    this.nextStop.y = uniformlyRandom(0.1,1);
+                }
+                continue;
+            }
+            // Compute timeToNextStop
+            const timeToNextStop=distanceToNextStop/this.speed;
+            // Move towards nextStop at given speed for min(dt, timeToNextStop)
+            const dt = Math.min(timeToNextStop, now - then);
+            const direction = new THREE.Vector3().subVectors(this.nextStop,this.root.position);
+            this.root.rotation.y = Math.atan2(direction.x, direction.z);
+            this.root.position.lerp(this.nextStop, dt / timeToNextStop);
+            this.root.position.y += dt*Math.sin(2*Math.PI*now+this.goal.x+this.goal.y);
+            then+=dt;
+        }
     }
 }
 class Petal{
@@ -262,10 +307,13 @@ plants.forEach(plant => scene.add(plant.root));
 
 const BUTTERFLIES = 50;
 const butterflies = Array.from({length:BUTTERFLIES},(_,i)=>{
-    const butterfly = new Butterfly();
-    butterfly.root.position.y = 1+Math.random();
-    butterfly.root.position.x = -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT;
-    butterfly.root.position.z = -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT;
+    const butterfly = new Butterfly({
+        position: new THREE.Vector3(
+            -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT,
+            1+Math.random(),
+            -PLANTS_SQRT/2+Math.random()*PLANTS_SQRT
+        ),
+    });
     return butterfly;
 });
 butterflies.forEach(butterfly => scene.add(butterfly.root));
@@ -300,24 +348,34 @@ document.addEventListener('mousemove', function(event) {
 // Update the camera's aspect ratio on window resize
 window.addEventListener('resize', function() {
     camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 const framesAt=[];
 let lastUpdateAt=Date.now();
 function updateState(){
-    const now=Date.now();
-    const dt = now - lastUpdateAt;
-    plants.forEach(plant => plant.setOpenRatio((1+Math.sin(now/1000))/2));
-    butterflies.forEach((butterfly,i) => {
-        butterfly.setOpenRatio((1+Math.sin(4*2*Math.PI*now/1000))/2);
-        //butterfly.setOpenRatio(1);
-        butterfly.root.position.y += Math.sin((now*(1+i/10)/2+i)/100)/100;
-        butterfly.root.rotation.y = now*(1+i/10)/1000;
-        butterfly.root.rotation.x = Math.PI/4;
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    if(cameraDirection.y < 0){
+        const t = -camera.position.y/cameraDirection.y;
+        reticle.position.x = t*cameraDirection.x;
+        reticle.position.z = t*cameraDirection.z;
+    }else{
+        reticle.position.x = 0;
+        reticle.position.z = 0;
+    }
 
-        butterfly.root.position.z += Math.cos(butterfly.root.rotation.y)*dt/500;
-        butterfly.root.position.x += Math.sin(butterfly.root.rotation.y)*dt/500;
+    const now=Date.now()/1000;
+    const dt = now - lastUpdateAt;
+    plants.forEach(plant => plant.setOpenRatio((1+Math.sin(now))/2));
+    butterflies.forEach((butterfly,i) => {
+        if(butterfly.root.position.distanceTo(butterfly.goal)<0.01){
+            const plant = plants[(Math.random()*plants.length)|0];
+            const goal = plant.root.position.clone().add(new THREE.Vector3(0,plant.petals[0].root.position.y,0));
+            butterfly.setGoal(goal);
+        }
+        butterfly.update(lastUpdateAt,now);
     });
     lastUpdateAt=now;
 }
