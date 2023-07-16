@@ -1,5 +1,7 @@
-const interpolate = (p, a, b) => p*(b-a)+a;
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
 
+const interpolate = (p, a, b) => p*(b-a)+a;
 
 
 var scene = new THREE.Scene();
@@ -8,6 +10,8 @@ camera.position.y = 1.6;
 var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+document.body.appendChild( VRButton.createButton( renderer ) );
+renderer.xr.enabled = true;
 
 // Step 2: Create the skybox
 var skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
@@ -305,18 +309,12 @@ window.addEventListener('resize', function() {
 });
 
 const framesAt=[];
-function animate() {
+renderer.setAnimationLoop( function () {
     framesAt.push(Date.now());
     if(10<framesAt.length)framesAt.shift()
     const dt = 2<=framesAt.length?framesAt.at(-1)-framesAt.at(-2):0;
     const fps=(framesAt.length-1)*1000/(framesAt.at(-1)-framesAt[0]);
     document.getElementById('fps').innerText=Math.round(fps);
-    requestAnimationFrame(animate);
-    // plant.root.rotation.y +=0.01;
-    // plant.root.rotation.x +=0.01;
-    //plants.forEach(plant => plant.setOpenRatio(0));
-    //plants.forEach(plant => plant.setOpenRatio(1));
-    //plants.forEach(plant => plant.setOpenRatio(Math.abs(Date.now()%2000/1000-1)));
     plants.forEach(plant => plant.setOpenRatio((1+Math.sin(Date.now()/1000))/2));
     butterflies.forEach((butterfly,i) => {
         butterfly.setOpenRatio((1+Math.sin(i+Date.now()*20/1000))/2);
@@ -326,9 +324,5 @@ function animate() {
         butterfly.root.position.z += Math.cos(butterfly.root.rotation.y)*dt/500;
         butterfly.root.position.x += Math.sin(butterfly.root.rotation.y)*dt/500;
     });
-    //camera.updateProjectionMatrix();
     renderer.render(scene, camera);
-}
-
-// Start the animation loop
-animate();
+});
