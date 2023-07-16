@@ -59,6 +59,7 @@ class Butterfly{
             this.root.add(wing);
             return wing;
         });
+        this.root.rotation.order = 'YXZ';
         this.setOpenRatio(0);
     }
     setOpenRatio(r){
@@ -303,20 +304,30 @@ window.addEventListener('resize', function() {
 });
 
 const framesAt=[];
-renderer.setAnimationLoop( function () {
-    framesAt.push(Date.now());
-    if(10<framesAt.length)framesAt.shift()
-    const dt = 2<=framesAt.length?framesAt.at(-1)-framesAt.at(-2):0;
-    const fps=(framesAt.length-1)*1000/(framesAt.at(-1)-framesAt[0]);
-    document.getElementById('fps').innerText=Math.round(fps);
-    plants.forEach(plant => plant.setOpenRatio((1+Math.sin(Date.now()/1000))/2));
+let lastUpdateAt=Date.now();
+function updateState(){
+    const now=Date.now();
+    const dt = now - lastUpdateAt;
+    plants.forEach(plant => plant.setOpenRatio((1+Math.sin(now/1000))/2));
     butterflies.forEach((butterfly,i) => {
-        butterfly.setOpenRatio((1+Math.sin(i+Date.now()*20/1000))/2);
-        butterfly.root.position.y += Math.sin((Date.now()*(1+i/10)/2+i)/100)/100;
+        butterfly.setOpenRatio((1+Math.sin(4*2*Math.PI*now/1000))/2);
+        //butterfly.setOpenRatio(1);
+        butterfly.root.position.y += Math.sin((now*(1+i/10)/2+i)/100)/100;
+        butterfly.root.rotation.y = now*(1+i/10)/1000;
+        butterfly.root.rotation.x = Math.PI/4;
 
-        butterfly.root.rotation.y += dt*(1+i/10)/1000;
         butterfly.root.position.z += Math.cos(butterfly.root.rotation.y)*dt/500;
         butterfly.root.position.x += Math.sin(butterfly.root.rotation.y)*dt/500;
     });
+    lastUpdateAt=now;
+}
+window.setInterval(updateState,10);
+
+renderer.setAnimationLoop( function () {
+    updateState();
+    framesAt.push(Date.now());
+    if(10<framesAt.length)framesAt.shift()
+    const fps=(framesAt.length-1)*1000/(framesAt.at(-1)-framesAt[0]);
+    document.getElementById('fps').innerText=Math.round(fps);
     renderer.render(scene, camera);
 });
