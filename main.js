@@ -259,6 +259,10 @@ class Plant{
         this.foldAngle = config.petals.foldAngle;
         this.openAngle = config.petals.openAngle;
         this.root = this.group;
+        this.desiredOpenRatio = 0;
+        this.setOpenRatio(this.desiredOpenRatio);
+        this.openingDuration=1;//s
+        this.closingDuration=3;//s
     }
     setOpenRatio(r){
         this.petals.forEach(petal=>{
@@ -268,6 +272,15 @@ class Plant{
                 far:interpolate(r, this.foldAngle, 0),
             });
         });
+        this.openRatio = r;
+    }
+    update(then,now){
+        const dt = now - then;
+        if(this.desiredOpenRatio < this.openRatio){
+            this.setOpenRatio(Math.max(this.openRatio - dt/this.closingDuration,this.desiredOpenRatio))
+        }else if(this.openRatio<this.desiredOpenRatio){
+            this.setOpenRatio(Math.min(this.openRatio + dt/this.openingDuration,this.desiredOpenRatio))
+        }
     }
 
 }
@@ -368,7 +381,10 @@ function updateState(){
 
     const now=Date.now()/1000;
     const dt = now - lastUpdateAt;
-    plants.forEach(plant => plant.setOpenRatio((1+Math.sin(now))/2));
+    plants.forEach(plant => {
+        plant.desiredOpenRatio = plant.root.position.distanceTo(reticle.position)< reticle.geometry.parameters.outerRadius ?1:0;
+        plant.update(lastUpdateAt,now);
+    });
     butterflies.forEach((butterfly,i) => {
         if(butterfly.root.position.distanceTo(butterfly.goal)<0.01){
             const plant = plants[(Math.random()*plants.length)|0];
