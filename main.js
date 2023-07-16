@@ -44,7 +44,7 @@ class Butterfly{
             0, 0, 0,
             125, -340, 0,
             200, -100, 0,
-        ].map(v => v/3000));
+        ].map(v => v/4000));
         Butterfly.geometry = new THREE.BufferGeometry();
         Butterfly.geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
         Butterfly.material = new THREE.MeshPhongMaterial({
@@ -66,6 +66,7 @@ class Butterfly{
         this.root.position.copy(this.goal);
         this.speed=1;//[m/ms]
         this.setOpenRatio(0);
+        this.seed = Math.random();
     }
     setOpenRatio(r){
         const a=r*Math.PI/2;
@@ -108,7 +109,7 @@ class Butterfly{
             const direction = new THREE.Vector3().subVectors(this.nextStop,this.root.position);
             this.root.rotation.y = Math.atan2(direction.x, direction.z);
             this.root.position.lerp(this.nextStop, dt / timeToNextStop);
-            this.root.position.y += dt*Math.sin(2*Math.PI*now+this.goal.x+this.goal.y);
+            this.root.position.y += dt*Math.sin(2*Math.PI*now+this.seed);
             then+=dt;
         }
     }
@@ -381,13 +382,18 @@ function updateState(){
 
     const now=Date.now()/1000;
     const dt = now - lastUpdateAt;
+    let openFlowers=[];
     plants.forEach(plant => {
         plant.desiredOpenRatio = plant.root.position.distanceTo(reticle.position)< reticle.geometry.parameters.outerRadius ?1:0;
         plant.update(lastUpdateAt,now);
+        if(0.5<plant.openRatio){
+            openFlowers.push(plant);
+        }
     });
+    const targetPlants=openFlowers.length?openFlowers:plants;
     butterflies.forEach((butterfly,i) => {
         if(butterfly.root.position.distanceTo(butterfly.goal)<0.01){
-            const plant = plants[(Math.random()*plants.length)|0];
+            const plant = targetPlants[(Math.random()*targetPlants.length)|0];
             const goal = plant.root.position.clone().add(new THREE.Vector3(0,plant.petals[0].root.position.y,0));
             butterfly.setGoal(goal);
         }
