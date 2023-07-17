@@ -367,7 +367,7 @@ window.addEventListener('resize', function() {
 });
 
 const framesAt=[];
-let lastUpdateAt=Date.now();
+let lastUpdateAt=Date.now()/1000;
 function updateState(){
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
