@@ -15,14 +15,6 @@ document.body.appendChild( VRButton.createButton( renderer ) );
 renderer.xr.enabled = true;
 
 
-const reticle = new THREE.Mesh(
-  new THREE.RingGeometry(0.45, 0.5, 30),
-  new THREE.MeshBasicMaterial({ color: 'pink' })
-);
-reticle.rotation.x = -Math.PI/2;
-reticle.position.y = 0.02;
-scene.add(reticle);
-
 // skyBox
 const skyGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
 const skyMaterials = ['ft','bk','up','dn','rt','lf'].map(side => new THREE.MeshBasicMaterial({
@@ -343,11 +335,13 @@ scene.add(light);
 const ambient_light = new THREE.AmbientLight( 0x404040 ); // soft white light
 scene.add( ambient_light );
 
-
-
+const RETICLE_OUTER_RADIUS = 0.5;
+const RETICLE_INNER_RADIUS = 0.3;
 const vertexShader = `
   varying vec2 vUv;
+  varying vec3 baseColor;
   uniform float time;
+  uniform vec3 reticle;
 
     void main() {
 
@@ -359,14 +353,27 @@ const vertexShader = `
     #ifdef USE_INSTANCING
         mvPosition = instanceMatrix * mvPosition;
     #endif
+    // COLOR
+    vec4 rootPosition = instanceMatrix[3];
+    vec3 towardReticle = reticle-rootPosition.xyz;
+    float dist2reticle = length(towardReticle);
+    if( dist2reticle < ${RETICLE_OUTER_RADIUS} && ${RETICLE_INNER_RADIUS} < dist2reticle){
+        baseColor = vec3( 1, 0.75, 0.8 );
+    }else{
+        baseColor = vec3( 0.41, 0.7, 0.5 );
+    }
+
+
 
     // DISPLACEMENT
+
+
 
     // here the displacement is made stronger on the blades tips.
     float dispPower = 1.0 - cos( uv.y * 3.1416 / 2.0 );
 
-    float displacement = sin( mvPosition.z + time * 5.0 ) * ( 0.1 * dispPower );
-    mvPosition.z += displacement;
+    float displacement = sin( (time+dist2reticle) * 5.0 ) * ( dispPower *0.05 / max(1.0, dist2reticle));
+    mvPosition.xyz += displacement*normalize(towardReticle);
 
     //
 
@@ -378,18 +385,18 @@ const vertexShader = `
 
 const fragmentShader = `
   varying vec2 vUv;
+  varying vec3 baseColor;
 
   void main() {
-    vec3 baseColor = vec3( 0.41, 0.7, 0.5 );
+
     float clarity = ( vUv.y * 0.5 ) + 0.5;
     gl_FragColor = vec4( baseColor * clarity, 1 );
   }
 `;
 
 const uniforms = {
-  time: {
-    value: 0
-  }
+  time: { value: 0 },
+  reticle: {value: new THREE.Vector3()},
 }
 
 const leavesMaterial = new THREE.ShaderMaterial({
@@ -410,7 +417,6 @@ const geometry = new THREE.PlaneGeometry(0.05, 1, 1, 4);
 geometry.translate(0, 0.5, 0); // move grass blade geometry lowest point at 0.
 
 const instancedMesh = new THREE.InstancedMesh(geometry, leavesMaterial, instanceNumber);
-instancedMesh.scale.setScalar(0.2);
 
 scene.add(instancedMesh);
 
@@ -419,12 +425,12 @@ scene.add(instancedMesh);
 for (let i = 0; i < instanceNumber; i++) {
 
   dummy.position.set(
-    (Math.random() - 0.5) * 50,
+    (Math.random() - 0.5) * 10,
     0,
-    (Math.random() - 0.5) * 50,
+    (Math.random() - 0.5) * 10,
   );
 
-  dummy.scale.setScalar(0.5 + Math.random() * 0.5);
+  dummy.scale.setScalar(0.1 + Math.random() * 0.1);
 
   dummy.rotation.y = Math.random() * Math.PI;
 
@@ -463,13 +469,14 @@ let lastUpdateAt=Date.now()/1000;
 function updateState(){
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
+    let reticle = leavesMaterial.uniforms.reticle.value;
     if(cameraDirection.y < 0){
         const t = -camera.position.y/cameraDirection.y;
-        reticle.position.x = t*cameraDirection.x;
-        reticle.position.z = t*cameraDirection.z;
+        reticle.x = t*cameraDirection.x;
+        reticle.z = t*cameraDirection.z;
     }else{
-        reticle.position.x = 0;
-        reticle.position.z = 0;
+        reticle.x = 0;
+        reticle.z = 0;
     }
 
     const now=Date.now()/1000;
@@ -478,7 +485,7 @@ function updateState(){
     leavesMaterial.uniformsNeedUpdate = true;
     let openFlowers=[];
     plants.forEach(plant => {
-        plant.desiredOpenRatio = plant.root.position.distanceTo(reticle.position)< reticle.geometry.parameters.outerRadius ?1:0;
+        plant.desiredOpenRatio = plant.root.position.distanceTo(reticle)< RETICLE_OUTER_RADIUS ?1:0;
         plant.update(lastUpdateAt,now);
         if(0.5<plant.openRatio){
             openFlowers.push(plant);
