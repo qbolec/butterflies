@@ -343,6 +343,98 @@ scene.add(light);
 const ambient_light = new THREE.AmbientLight( 0x404040 ); // soft white light
 scene.add( ambient_light );
 
+
+
+const vertexShader = `
+  varying vec2 vUv;
+  uniform float time;
+
+    void main() {
+
+    vUv = uv;
+
+    // VERTEX POSITION
+
+    vec4 mvPosition = vec4( position, 1.0 );
+    #ifdef USE_INSTANCING
+        mvPosition = instanceMatrix * mvPosition;
+    #endif
+
+    // DISPLACEMENT
+
+    // here the displacement is made stronger on the blades tips.
+    float dispPower = 1.0 - cos( uv.y * 3.1416 / 2.0 );
+
+    float displacement = sin( mvPosition.z + time * 5.0 ) * ( 0.1 * dispPower );
+    mvPosition.z += displacement;
+
+    //
+
+    vec4 modelViewPosition = modelViewMatrix * mvPosition;
+    gl_Position = projectionMatrix * modelViewPosition;
+
+    }
+`;
+
+const fragmentShader = `
+  varying vec2 vUv;
+
+  void main() {
+    vec3 baseColor = vec3( 0.41, 0.7, 0.5 );
+    float clarity = ( vUv.y * 0.5 ) + 0.5;
+    gl_FragColor = vec4( baseColor * clarity, 1 );
+  }
+`;
+
+const uniforms = {
+  time: {
+    value: 0
+  }
+}
+
+const leavesMaterial = new THREE.ShaderMaterial({
+  vertexShader,
+  fragmentShader,
+  uniforms,
+  side: THREE.DoubleSide
+});
+
+/////////
+// MESH
+/////////
+
+const instanceNumber = 200000;
+const dummy = new THREE.Object3D();
+
+const geometry = new THREE.PlaneGeometry(0.05, 1, 1, 4);
+geometry.translate(0, 0.5, 0); // move grass blade geometry lowest point at 0.
+
+const instancedMesh = new THREE.InstancedMesh(geometry, leavesMaterial, instanceNumber);
+instancedMesh.scale.setScalar(0.2);
+
+scene.add(instancedMesh);
+
+// Position and scale the grass blade instances randomly.
+
+for (let i = 0; i < instanceNumber; i++) {
+
+  dummy.position.set(
+    (Math.random() - 0.5) * 50,
+    0,
+    (Math.random() - 0.5) * 50,
+  );
+
+  dummy.scale.setScalar(0.5 + Math.random() * 0.5);
+
+  dummy.rotation.y = Math.random() * Math.PI;
+
+  dummy.updateMatrix();
+  instancedMesh.setMatrixAt(i, dummy.matrix);
+
+}
+
+
+
 // Variables to track mouse movement
 var mouseX = 0;
 var mouseY = 0;
@@ -382,6 +474,8 @@ function updateState(){
 
     const now=Date.now()/1000;
     const dt = now - lastUpdateAt;
+    leavesMaterial.uniforms.time.value = now%3600;
+    leavesMaterial.uniformsNeedUpdate = true;
     let openFlowers=[];
     plants.forEach(plant => {
         plant.desiredOpenRatio = plant.root.position.distanceTo(reticle.position)< reticle.geometry.parameters.outerRadius ?1:0;
