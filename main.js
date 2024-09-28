@@ -372,7 +372,7 @@ const vertexShader = `
     // here the displacement is made stronger on the blades tips.
     float dispPower = 1.0 - cos( uv.y * 3.1416 / 2.0 );
 
-    float displacement = sin( (time+dist2reticle) * 5.0 ) * ( dispPower *0.05 / max(1.0, dist2reticle));
+    float displacement = sin( time*2.0 + dist2reticle*4.0 ) * ( dispPower *0.05 / max(1.0, dist2reticle));
     mvPosition.xyz += displacement*normalize(towardReticle);
 
     //
